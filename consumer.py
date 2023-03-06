@@ -1,15 +1,15 @@
 from confluent_kafka import Consumer
 
-from confluent_kafka.serialization import StringDeserializer
+from confluent_kafka.serialization import StringDeserializer, SerializationContext, MessageField
 from confluent_kafka.schema_registry.json_schema import JSONDeserializer
 
 from models.produto import Produto, dict_to_product
 
 
 # Type Hints em Python
-def consume_messages(consumer, topic):
+def consume_messages(consumer, key_serializer, value_serializer,  topic):
     try:
-        consumer.subscribe(topic)
+        consumer.subscribe([topic])
 
         while True:
             msg = consumer.poll(timeout=1.0)
@@ -17,7 +17,7 @@ def consume_messages(consumer, topic):
             # Verificando se a mensagem está nula 
             if msg is None: continue
 
-            produto =  msg.Value()
+            produto =  json_deserializer(msg.value(), SerializationContext(topic, MessageField.VALUE))
 
             print(f"{produto.modelo} {produto.sku}")
 
@@ -46,11 +46,9 @@ if __name__ == "__main__":
     conf =  {
         "bootstrap.servers": "localhost:9092",
         "group.id": "produtos_consumer_group",
-        "auto.offset.reset": "latest",
-        "key.deserializer": string_deserializer,
-        "value.deserializer": json_deserializer
+        "auto.offset.reset": "latest"
     }
 
     cons = Consumer(conf)
 
-    consume_messages(cons, "produtos")
+    consume_messages(cons, string_deserializer, json_deserializer, "produtos")
